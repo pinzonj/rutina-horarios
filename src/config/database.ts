@@ -4,11 +4,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const pool = new Pool({
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT || '5432'),
-    database: process.env.DB_NAME
+    // Usará la URL de la nube cuando esté en internet
+    connectionString: process.env.postgresql://neondb_owner:npg_5mTCfzP1AZui@ep-withered-cell-bdq18nod-pooler.c-8.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require,
+    // El SSL es un requisito de seguridad obligatorio en Neon y Render
+    ssl: process.env.postgresql://neondb_owner:npg_5mTCfzP1AZui@ep-withered-cell-bdq18nod-pooler.c-8.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require ? { rejectUnauthorized: false } : false
 });
 
 pool.on('connect', () => {
