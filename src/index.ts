@@ -31,6 +31,8 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
-app.listen(port, () => {
-    console.log(`Servidor corriendo en http://localhost:${port}`);
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+    console.log(`Servidor operativo en el puerto ${PORT}`);
 });

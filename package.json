@@ -4,7 +4,8 @@
   "description": "Backend para el sistema de horarios de Rutina Café",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "ts-node-dev src/index.ts"
+    "dev": "ts-node-dev src/index.ts",
+    "start": "npx ts-node src/index.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
