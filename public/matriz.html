@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matriz de Horarios - Rutina Café</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; margin: 0; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        h1 { margin: 0; color: #333; font-size: 24px; }
+        input[type="date"] { padding: 8px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+        
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background-color: #d35400; color: white; font-weight: bold; }
+        td.texto-izq { text-align: left; }
+        
+        input.turno-input { width: 100%; box-sizing: border-box; padding: 6px; text-align: center; border: 1px solid #eee; border-radius: 4px; }
+        input.turno-input:focus { border-color: #d35400; outline: none; background-color: #fff3e0; }
+        
+        tbody tr:hover { background-color: #f9f9f9; }
+        .sede-norte { border-left: 5px solid #2980b9; }
+        .sede-sur { border-left: 5px solid #27ae60; }
+        .sede-vacia { border-left: 5px solid #e74c3c; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Matriz de Turnos - Rutina Café</h1>
+        <div>
+            <label for="fecha-inicio"><strong>Semana del (Lunes):</strong></label>
+            <input type="date" id="fecha-inicio" onchange="cargarMatriz()">
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Sede</th>
+                <th>Cargo</th>
+                <th>Empleado</th>
+                <th>Lunes</th>
+                <th>Martes</th>
+                <th>Miércoles</th>
+                <th>Jueves</th>
+                <th>Viernes</th>
+                <th>Sábado</th>
+                <th>Domingo</th>
+            </tr>
+        </thead>
+        <tbody id="tabla-matriz">
+            <!-- La matriz se construye aquí -->
+        </tbody>
+    </table>
+
+    <script>
+        // Calcular el lunes de la semana actual por defecto
+        function obtenerLunes(d) {
+            const date = new Date(d);
+            const day = date.getDay();
+            const diff = date.getDate() - day + (day === 0 ? -6 : 1); 
+            return new Date(date.setDate(diff)).toISOString().split('T')[0];
+        }
+
+        document.getElementById('fecha-inicio').value = obtenerLunes(new Date());
+
+        async function cargarMatriz() {
+            const fechaInicio = document.getElementById('fecha-inicio').value;
+            const tbody = document.getElementById('tabla-matriz');
+            tbody.innerHTML = '<tr><td colspan="10">Cargando matriz...</td></tr>';
+
+            try {
+                const respuesta = await fetch(`/api/horarios/matriz?inicio=${fechaInicio}`);
+                const datos = await respuesta.json();
+                
+                const empleadosMap = {};
+                datos.forEach(fila => {
+                    if (!empleadosMap[fila.empleado_id]) {
+                        empleadosMap[fila.empleado_id] = {
+                            id: fila.empleado_id,
+                            nombre: fila.empleado,
+                            cargo: fila.cargo,
+                            sede: fila.sede || 'Sin asignar',
+                            turnos: {}
+                        };
+                    }
+                    if (fila.fecha) {
+                        const fechaCorta = fila.fecha.split('T')[0];
+                        empleadosMap[fila.empleado_id].turnos[fechaCorta] = fila.turno;
+                    }
+                });
+
+                tbody.innerHTML = '';
+                
+                const fechasSemana = [];
+                let fechaActual = new Date(fechaInicio + 'T00:00:00');
+                for(let i = 0; i < 7; i++) {
+                    fechasSemana.push(new Date(fechaActual).toISOString().split('T')[0]);
+                    fechaActual.setDate(fechaActual.getDate() + 1);
+                }
+
+                Object.values(empleadosMap).forEach(emp => {
+                    const tr = document.createElement('tr');
+                    
+                    let claseSede = 'sede-vacia';
+                    if(emp.sede === 'Norte') claseSede = 'sede-norte';
+                    if(emp.sede === 'Sur') claseSede = 'sede-sur';
+
+                    tr.innerHTML = `
+                        <td class="texto-izq ${claseSede}"><strong>${emp.sede}</strong></td>
+                        <td class="texto-izq">${emp.cargo}</td>
+                        <td class="texto-izq">${emp.nombre}</td>
+                        ${fechasSemana.map(fecha => `
+                            <td>
+                                <input type="text" class="turno-input" 
+                                    value="${emp.turnos[fecha] || ''}" 
+                                    onchange="guardarTurno(${emp.id}, '${fecha}', this.value)"
+                                    placeholder="-">
+                            </td>
+                        `).join('')}
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+            } catch (error) {
+                console.error('Error:', error);
+                tbody.innerHTML = '<tr><td colspan="10">Error al cargar los datos</td></tr>';
+            }
+        }
+
+        async function guardarTurno(empleadoId, fecha, turno) {
+            try {
+                const res = await fetch('/api/horarios/turno', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ empleado_id: empleadoId, fecha: fecha, turno: turno })
+                });
+                if(!res.ok) {
+                    alert('Error al guardar el turno');
+                }
+            } catch(error) {
+                console.error('Error al guardar:', error);
+            }
+        }
+
+        cargarMatriz();
+    </script>
+</body>
+</html>

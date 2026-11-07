@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horarios - Rutina Café</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Librería para exportar a Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg-principal: #F9F6F0; 
+            --texto-oscuro: #4A3B32; 
+            --texto-medio: #8B7355; 
+            --acento-suave: #D4C4B7; 
+            --blanco-puro: #FFFFFF;
+            --borde-suave: #E8E1D9;
+            --norte-color: #C89F7C; 
+            --sur-color: #9BA48A; 
+        }
+
+        body { font-family: 'Poppins', sans-serif; padding: 0; margin: 0; background-color: var(--bg-principal); color: var(--texto-oscuro); }
+        
+        nav { background-color: var(--blanco-puro); padding: 15px 30px; display: flex; gap: 15px; box-shadow: 0 2px 10px rgba(74, 59, 50, 0.05); border-bottom: 1px solid var(--borde-suave); }
+        nav a { color: var(--texto-medio); text-decoration: none; font-weight: 500; font-size: 14px; padding: 10px 18px; border-radius: 8px; transition: all 0.3s ease; }
+        nav a:hover { background-color: var(--bg-principal); color: var(--texto-oscuro); }
+        nav a.activo { background-color: var(--texto-oscuro); color: var(--blanco-puro); }
+
+        .container { padding: 30px; max-width: 1400px; margin: 0 auto; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        h1 { margin: 0; font-size: 26px; font-weight: 600; color: var(--texto-oscuro); letter-spacing: -0.5px; }
+        h2 { margin: 0; font-size: 20px; font-weight: 600; color: var(--texto-oscuro); }
+        
+        .controles-derecha { display: flex; gap: 15px; align-items: center; }
+        
+        .date-picker-wrapper { background: var(--blanco-puro); padding: 10px 15px; border-radius: 10px; border: 1px solid var(--borde-suave); box-shadow: 0 2px 8px rgba(0,0,0,0.02); display: flex; align-items: center; gap: 10px; }
+        .date-picker-wrapper label { font-size: 14px; font-weight: 500; color: var(--texto-medio); }
+        input[type="date"] { border: none; font-family: 'Poppins', sans-serif; font-size: 14px; color: var(--texto-oscuro); outline: none; background: transparent; cursor: pointer; }
+        
+        /* Botón de Excel */
+        .btn-excel {
+            background-color: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 10px; font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background-color 0.3s ease; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.2);
+        }
+        .btn-excel:hover { background-color: #219653; }
+
+        .tabla-contenedor { background: var(--blanco-puro); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(74, 59, 50, 0.04); border: 1px solid var(--borde-suave); margin-bottom: 40px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 15px; text-align: center; vertical-align: middle; border-bottom: 1px solid var(--borde-suave); }
+        th { background-color: var(--bg-principal); color: var(--texto-oscuro); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--borde-suave); }
+        td.texto-izq { text-align: left; font-size: 14px; font-weight: 500; }
+        
+        .celda-turno { background-color: var(--blanco-puro); padding: 10px; border-radius: 8px; border: 1px solid var(--borde-suave); display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.01); }
+        .nombre-emp { font-weight: 600; color: var(--texto-oscuro); font-size: 13px; margin-bottom: 4px; }
+        .hora-turno { color: var(--texto-medio); font-size: 12px; font-weight: 500; background: var(--bg-principal); padding: 3px 8px; border-radius: 12px;}
+        
+        .indicador-sede { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--blanco-puro); }
+        .sede-norte-badge { background-color: var(--norte-color); }
+        .sede-sur-badge { background-color: var(--sur-color); }
+        
+        tbody tr:nth-child(even) { background-color: #FAFAFA; }
+        tbody tr:hover { background-color: var(--bg-principal); }
+        .sin-turno { color: #C2B8B0; font-size: 12px; font-style: italic; }
+
+        .btn-toggle { background-color: var(--texto-oscuro); color: var(--blanco-puro); border: none; padding: 8px 16px; border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: background-color 0.3s ease; }
+        .btn-toggle:hover { background-color: var(--texto-medio); }
+        .resumen-grid { display: none; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-top: 15px; }
+        .tarjeta-resumen { background: var(--blanco-puro); padding: 15px; border-radius: 10px; border: 1px solid var(--borde-suave); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .tarjeta-resumen .nombre { font-weight: 600; font-size: 14px; }
+        .tarjeta-resumen .horas { font-weight: 700; color: var(--norte-color); font-size: 16px; background: var(--bg-principal); padding: 5px 12px; border-radius: 8px;}
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="/">Directorio</a>
+        <a href="/matriz-operativa.html">Programar Turnos</a>
+        <a href="/vista.html" class="activo">Vista General</a>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>Horarios de Operación</h1>
+            <div class="controles-derecha">
+                <button class="btn-excel" onclick="exportarExcel()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M5.884 6.68a.5.5 0 1 0-.768.64L7.349 10l-2.233 2.68a.5.5 0 0 0 .768.64L8 10.781l2.116 2.54a.5.5 0 0 0 .768-.641L8.651 10l2.233-2.68a.5.5 0 0 0-.768-.64L8 9.219l-2.116-2.54z"/>
+                        <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
+                    </svg>
+                    Exportar a Excel
+                </button>
+                <div class="date-picker-wrapper">
+                    <label for="fecha-inicio">Semana del:</label>
+                    <input type="date" id="fecha-inicio">
+                </div>
+            </div>
+        </div>
+
+        <div class="tabla-contenedor">
+            <table id="tabla-exportar">
+                <thead>
+                    <tr>
+                        <th>Sede</th>
+                        <th>Puesto Requerido</th>
+                        <th>Lunes</th>
+                        <th>Martes</th>
+                        <th>Miércoles</th>
+                        <th>Jueves</th>
+                        <th>Viernes</th>
+                        <th>Sábado</th>
+                        <th>Domingo</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-matriz">
+                </tbody>
+            </table>
+        </div>
+
+        <div class="header" style="margin-top: 20px; margin-bottom: 10px; background: transparent; box-shadow: none; padding: 0;">
+            <h2>Resumen de Horas</h2>
+            <button id="btn-toggle-resumen" class="btn-toggle" onclick="toggleResumen()">Ver Horas Trabajadas</button>
+        </div>
+        <div class="resumen-grid" id="contenedor-resumen">
+        </div>
+
+    </div>
+
+    <script>
+        // Actualizado con los nuevos puestos de Sede Sur
+        const estructuraOperativa = [
+            { sede: 'Norte', cargo: 'Cajero(a)', clase: 'sede-norte-badge' },
+            { sede: 'Norte', cargo: 'Barista Principal', clase: 'sede-norte-badge' },
+            { sede: 'Norte', cargo: 'Barista Apoyo', clase: 'sede-norte-badge' },
+            { sede: 'Norte', cargo: 'Auxiliar Cocina 1', clase: 'sede-norte-badge' },
+            { sede: 'Norte', cargo: 'Auxiliar Cocina 2', clase: 'sede-norte-badge' },
+            { sede: 'Norte', cargo: 'Mesero(a) 1', clase: 'sede-norte-badge' },
+            { sede: 'Sur', cargo: 'Cajero(a)', clase: 'sede-sur-badge' },
+            { sede: 'Sur', cargo: 'Barista Principal', clase: 'sede-sur-badge' },
+            { sede: 'Sur', cargo: 'Barista de Apoyo', clase: 'sede-sur-badge' }, 
+            { sede: 'Sur', cargo: 'Auxiliar Cocina 1', clase: 'sede-sur-badge' },
+            { sede: 'Sur', cargo: 'Auxiliar Cocina 2', clase: 'sede-sur-badge' },
+            { sede: 'Sur', cargo: 'Mesero(a) 1', clase: 'sede-sur-badge' }
+        ];
+
+        function obtenerLunes(d) {
+            const date = new Date(d);
+            const day = date.getDay();
+            const diff = date.getDate() - day + (day === 0 ? -6 : 1); 
+            return new Date(date.setDate(diff)).toISOString().split('T')[0];
+        }
+
+        document.getElementById('fecha-inicio').addEventListener('change', cargarVista);
+        document.getElementById('fecha-inicio').value = obtenerLunes(new Date());
+
+        function toggleResumen() {
+            const contenedor = document.getElementById('contenedor-resumen');
+            const btn = document.getElementById('btn-toggle-resumen');
+            if (contenedor.style.display === 'none' || contenedor.style.display === '') {
+                contenedor.style.display = 'grid';
+                btn.textContent = 'Ocultar Horas';
+            } else {
+                contenedor.style.display = 'none';
+                btn.textContent = 'Ver Horas Trabajadas';
+            }
+        }
+
+        function calcularHorasTurno(horarioText) {
+            if (!horarioText) return 0;
+            try {
+                const limpio = horarioText.toLowerCase().replace(/\s+/g, '');
+                const partes = limpio.split(/a|-/); 
+                if (partes.length === 2) {
+                    const parseTime = (t) => {
+                        let [h, m] = t.split(':');
+                        return (parseInt(h) || 0) + ((parseInt(m) || 0) / 60);
+                    };
+                    let inicio = parseTime(partes[0]);
+                    let fin = parseTime(partes[1]);
+                    if (fin < inicio) fin += 24; 
+                    return fin - inicio;
+                }
+            } catch (e) { return 0; }
+            return 0;
+        }
+
+        async function cargarVista() {
+            const fechaInicio = document.getElementById('fecha-inicio').value;
+            const tbody = document.getElementById('tabla-matriz');
+            const resumenContenedor = document.getElementById('contenedor-resumen');
+            
+            tbody.innerHTML = '<tr><td colspan="9" style="padding: 40px; color: #8B7355;">Cargando la semana operativa...</td></tr>';
+            resumenContenedor.innerHTML = '';
+
+            try {
+                const resEmpleados = await fetch('/api/empleados');
+                const empleados = await resEmpleados.json();
+                const resHorarios = await fetch(`/api/horarios/matriz?inicio=${fechaInicio}`);
+                const turnosGuardados = await resHorarios.json();
+
+                const fechasSemana = [];
+                let fechaActual = new Date(fechaInicio + 'T00:00:00');
+                for(let i = 0; i < 7; i++) {
+                    fechasSemana.push(new Date(fechaActual).toISOString().split('T')[0]);
+                    fechaActual.setDate(fechaActual.getDate() + 1);
+                }
+
+                tbody.innerHTML = '';
+                let horasPorEmpleado = {};
+                empleados.forEach(emp => { horasPorEmpleado[emp.id] = { nombre: emp.nombre, horas: 0 }; });
+
+                estructuraOperativa.forEach(puesto => {
+                    const tr = document.createElement('tr');
+                    let celdasDias = '';
+                    
+                    fechasSemana.forEach(fecha => {
+                        const registro = turnosGuardados.find(t => t.sede === puesto.sede && t.puesto === puesto.cargo && t.fecha.split('T')[0] === fecha);
+                        let contenidoCelda = '<span class="sin-turno">—</span>';
+                        
+                        if (registro && registro.empleado_id) {
+                            const emp = empleados.find(e => e.id == registro.empleado_id);
+                            const nombre = emp ? emp.nombre : 'Desconocido';
+                            const horario = registro.horario || '';
+                            
+                            if (horasPorEmpleado[registro.empleado_id] && horario) {
+                                horasPorEmpleado[registro.empleado_id].horas += calcularHorasTurno(horario);
+                            }
+
+                            contenidoCelda = `
+                                <div class="celda-turno">
+                                    <span class="nombre-emp">${nombre}</span>
+                                    <span class="hora-turno">${horario || 'Sin horario'}</span>
+                                </div>
+                            `;
+                        }
+                        celdasDias += `<td>${contenidoCelda}</td>`;
+                    });
+
+                    tr.innerHTML = `
+                        <td class="texto-izq"><span class="indicador-sede ${puesto.clase}">${puesto.sede}</span></td>
+                        <td class="texto-izq" style="color: var(--texto-oscuro);">${puesto.cargo}</td>
+                        ${celdasDias}
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                Object.values(horasPorEmpleado).forEach(data => {
+                    if (data.horas > 0) { 
+                        const div = document.createElement('div');
+                        div.className = 'tarjeta-resumen';
+                        div.innerHTML = `<span class="nombre">${data.nombre}</span><span class="horas">${data.horas} hrs</span>`;
+                        resumenContenedor.appendChild(div);
+                    }
+                });
+
+                if (resumenContenedor.innerHTML === '') {
+                    resumenContenedor.innerHTML = '<p style="color: var(--texto-medio); padding: 10px;">No hay turnos registrados en esta semana.</p>';
+                }
+
+            } catch (error) {
+                console.error('Error cargando la vista:', error);
+                tbody.innerHTML = '<tr><td colspan="9">Error al cargar los datos. Revisa la conexión.</td></tr>';
+            }
+        }
+
+        // --- NUEVA FUNCIÓN PARA EXPORTAR A EXCEL ---
+        function exportarExcel() {
+            // 1. Clonamos la tabla para limpiarla visualmente antes de pasarla al Excel
+            const tablaOriginal = document.getElementById("tabla-exportar");
+            const tablaClon = tablaOriginal.cloneNode(true);
+
+            // 2. Extraemos el Nombre y Horario para que queden en una sola línea en el Excel (Ej: "Juan Perez (7:00 a 15:00)")
+            const celdas = tablaClon.querySelectorAll('.celda-turno');
+            celdas.forEach(celda => {
+                const nombre = celda.querySelector('.nombre-emp').textContent;
+                const hora = celda.querySelector('.hora-turno').textContent;
+                celda.textContent = `${nombre} (${hora})`;
+            });
+
+            // 3. Generamos el archivo
+            const wb = XLSX.utils.table_to_book(tablaClon, { sheet: "Horarios" });
+            const fecha = document.getElementById('fecha-inicio').value;
+            
+            // 4. Lo descargamos a la computadora
+            XLSX.writeFile(wb, `Horarios_Rutina_Cafe_${fecha}.xlsx`);
+        }
+
+        cargarVista();
+    </script>
+</body>
+</html>
